@@ -1,18 +1,465 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title></title>
+	<title>To Do</title>
+	<meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <title>htmlDatePicker Test Page (CFML)</title>
+  <script language="JavaScript" type="text/javascript">
+// User Changeable Vars
+var HighlightToday  = true;    // use true or false to have the current day highlighted
+var DisablePast    = true;    // use true or false to allow past dates to be selectable
+// The month names in your native language can be substituted below
+var MonthNames = new Array("January","February","March","April","May","June","July","August","September","October","November","December");
+
+// Global Vars
+var now = new Date();
+var dest = null;
+var ny = now.getFullYear(); // Today's Date
+var nm = now.getMonth();
+var nd = now.getDate();
+var sy = 0; // currently Selected date
+var sm = 0;
+var sd = 0;
+var y = now.getFullYear(); // Working Date
+var m = now.getMonth();
+var d = now.getDate();
+var l = 0;
+var t = 0;
+var MonthLengths = new Array(31,28,31,30,31,30,31,31,30,31,30,31);
+
+/*
+  Function: GetDate(control)
+
+  Arguments:
+    control = ID of destination control
+*/
+function GetDate() {
+  EnsureCalendarExists();
+  DestroyCalendar();
+  // One arguments is required, the rest are optional
+  // First arguments must be the ID of the destination control
+  if(arguments[0] == null || arguments[0] == "") {
+    // arguments not defined, so display error and quit
+    alert("ERROR: Destination control required in funciton call GetDate()");
+    return;
+  } else {
+    // copy argument
+    dest = arguments[0];
+  }
+  y = now.getFullYear();
+  m = now.getMonth();
+  d = now.getDate();
+  sm = 0;
+  sd = 0;
+  sy = 0;
+  var cdval = dest.value;
+  if(/\d{1,2}.\d{1,2}.\d{4}/.test(dest.value)) {
+    // element contains a date, so set the shown date
+    var vParts = cdval.split("/"); // assume mm/dd/yyyy
+    sm = vParts[0] - 1;
+    sd = vParts[1];
+    sy = vParts[2];
+    m=sm;
+    d=sd;
+    y=sy;
+  }
+  
+//  l = dest.offsetLeft; // + dest.offsetWidth;
+//  t = dest.offsetTop - 125;   // Calendar is displayed 125 pixels above the destination element
+//  if(t<0) { t=0; }      // or (somewhat) over top of it. ;)
+
+  /* Calendar is displayed 125 pixels above the destination element
+  or (somewhat) over top of it. ;)*/
+  l = dest.offsetLeft + dest.offsetParent.offsetLeft;
+  t = dest.offsetTop - 125;
+  if(t < 0) t = 0; // >
+  DrawCalendar();
+}
+
+/*
+  function DestoryCalendar()
+  
+  Purpose: Destory any already drawn calendar so a new one can be drawn
+*/
+function DestroyCalendar() {
+  var cal = document.getElementById("dpCalendar");
+  if(cal != null) {
+    cal.innerHTML = null;
+    cal.style.display = "none";
+  }
+  return
+}
+
+function DrawCalendar() {
+  DestroyCalendar();
+  cal = document.getElementById("dpCalendar");
+  cal.style.left = l + "px";
+  cal.style.top = t + "px";
+  
+  var sCal = "<table><tr><td class=\"cellButton\"><a href=\"javascript: PrevMonth();\" title=\"Previous Month\">&lt;&lt;</a></td>"+
+    "<td class=\"cellMonth\" width=\"80%\" colspan=\"5\">"+MonthNames[m]+" "+y+"</td>"+
+    "<td class=\"cellButton\"><a href=\"javascript: NextMonth();\" title=\"Next Month\">&gt;&gt;</a></td></tr>"+
+    "<tr><td>S</td><td>M</td><td>T</td><td>W</td><td>T</td><td>F</td><td>S</td></tr>";
+  var wDay = 1;
+  var wDate = new Date(y,m,wDay);
+  if(isLeapYear(wDate)) {
+    MonthLengths[1] = 29;
+  } else {
+    MonthLengths[1] = 28;
+  }
+  var dayclass = "";
+  var isToday = false;
+  for(var r=1; r<7; r++) {
+    sCal = sCal + "<tr>";
+    for(var c=0; c<7; c++) {
+      var wDate = new Date(y,m,wDay);
+      if(wDate.getDay() == c && wDay<=MonthLengths[m]) {
+        if(wDate.getDate()==sd && wDate.getMonth()==sm && wDate.getFullYear()==sy) {
+          dayclass = "cellSelected";
+          isToday = true;  // only matters if the selected day IS today, otherwise ignored.
+        } else if(wDate.getDate()==nd && wDate.getMonth()==nm && wDate.getFullYear()==ny && HighlightToday) {
+          dayclass = "cellToday";
+          isToday = true;
+        } else {
+          dayclass = "cellDay";
+          isToday = false;
+        }
+        if(((now > wDate) && !DisablePast) || (now <= wDate) || isToday) { // >
+          // user wants past dates selectable
+          sCal = sCal + "<td class=\""+dayclass+"\"><a href=\"javascript: ReturnDay("+wDay+");\">"+wDay+"</a></td>";
+        } else {
+          // user wants past dates to be read only
+          sCal = sCal + "<td class=\""+dayclass+"\">"+wDay+"</td>";
+        }
+        wDay++;
+      } else {
+        sCal = sCal + "<td class=\"unused\"></td>";
+      }
+    }
+    sCal = sCal + "</tr>";
+  }
+  sCal = sCal + "<tr><td colspan=\"4\" class=\"unused\"></td><td colspan=\"3\" class=\"cellCancel\"><a href=\"javascript: DestroyCalendar();\">Cancel</a></td></tr></table>"
+  cal.innerHTML = sCal; // works in FireFox, opera
+  cal.style.display = "inline";
+}
+
+function PrevMonth() {
+  m--;
+  if(m==-1) {
+    m = 11;
+    y--;
+  }
+  DrawCalendar();
+}
+
+function NextMonth() {
+  m++;
+  if(m==12) {
+    m = 0;
+    y++;
+  }
+  DrawCalendar();
+}
+
+function ReturnDay(day) {
+  cDest = document.getElementById(dest);
+  dest.value = (m+1)+"/"+day+"/"+y;
+  DestroyCalendar();
+}
+
+function EnsureCalendarExists() {
+  if(document.getElementById("dpCalendar") == null) {
+    var eCalendar = document.createElement("div");
+    eCalendar.setAttribute("id", "dpCalendar");
+    document.body.appendChild(eCalendar);
+  }
+}
+
+function isLeapYear(dTest) {
+  var y = dTest.getYear();
+  var bReturn = false;
+  
+  if(y % 4 == 0) {
+    if(y % 100 != 0) {
+      bReturn = true;
+    } else {
+      if (y % 400 == 0) {
+        bReturn = true;
+      }
+    }
+  }
+  
+  return bReturn;
+}  
+  
+  </script>
+  <style type="text/css">
+/**************************************************************************************
+  htmlDatePicker CSS file
+  
+  Feel Free to change the fonts, sizes, borders, and colours of any of these elements
+***************************************************************************************/
+/* The containing DIV element for the Calendar */
+#dpCalendar {
+  display: none;          /* Important, do not change */
+  position: absolute;        /* Important, do not change */
+  background-color: #eeeeee;
+  color: black;
+  font-size: xx-small;
+  font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+  width: 150px;
+}
+/* The table of the Calendar */
+#dpCalendar table {
+  border: 1px solid black;
+  background-color: #eeeeee;
+  color: black;
+  font-size: xx-small;
+  font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+  width: 100%;
+}
+/* The Next/Previous buttons */
+#dpCalendar .cellButton {
+  background-color: #ddddff;
+  color: black;
+}
+/* The Month/Year title cell */
+#dpCalendar .cellMonth {
+  background-color: #ddddff;
+  color: black;
+  text-align: center;
+}
+/* Any regular day of the month cell */
+#dpCalendar .cellDay {
+  background-color: #ddddff;
+  color: black;
+  text-align: center;
+}
+/* The day of the month cell that is selected */
+#dpCalendar .cellSelected {
+  border: 1px solid red;
+  background-color: #ffdddd;
+  color: black;
+  text-align: center;
+}
+/* The day of the month cell that is Today */
+#dpCalendar .cellToday {
+  background-color: #ddffdd;
+  color: black;
+  text-align: center;
+}
+/* Any cell in a month that is unused (ie: Not a Day in that month) */
+#dpCalendar .unused {
+  background-color: transparent;
+  color: black;
+}
+/* The cancel button */
+#dpCalendar .cellCancel {
+  background-color: #cccccc;
+  color: black;
+  border: 1px solid black;
+  text-align: center;
+}
+/* The clickable text inside the calendar */
+#dpCalendar a {
+  text-decoration: none;
+  background-color: transparent;
+  color: blue;
+}  
+  </style>
+  <script>
+function calert() {
+    var x = document.getElementById("well");
+    x.style.fontSize = "15px";           
+    x.style.color = "red"; 
+}
+</script>
 </head>
 <body>
-<h1> Enter the task </h1>	
-<form action="/" method="post" >{% csrf_token %}
-<input name="task" type="text">
-<button type="submit"> Add Task</button>
-</form>
-<H2>My Tasks</H2>
+<div class="container-fluid"></div>
+<!--navbar--> 
+<nav class="navbar navbar-inverse navbar-static-top">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-2">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" >To Do</a>
+    </div>
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="file:///home/uday/Desktop/102/todo-1.html">Home <span class="sr-only">(current)</span></a></li>
+        <li><a href="file:///home/uday/Desktop/102/todo-1.html#alltask">All Task</a></li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown">More<span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="file:///home/uday/Desktop/102/todo-1.html#form1">Add Task</a></li>
+            <li><a href="#">Edit Task</a></li>
+            <li><a href="#">Delete Task</a></li>
+            <li class="divider"></li>
+            <li><a href="#">Settings</a></li>
+            <li class="divider"></li>
+            <li><a href="#">About</a></li>
+          </ul>
+        </li>
+      </ul>
+      <form class="navbar-form navbar-left" role="search">
+        <div class="form-group">
+          <input class="form-control" placeholder="Search" type="text">
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+      <form class="navbar-form navbar-right">
+
+       <div class="form-group">
+        <input class="form-control" id="mail" type="text" placeholder="Email"></input>
+        <input class="form-control" id="pass" type="text" placeholder="Password"></input>
+      </div>
+      <div class="form-group"></div>
+      <button class="btn btn-success" onclick="auth()" type="submit">Sign In</button>
+
+      </form>
+    </div>
+  </div>
+  
+</nav>
+<!-- navbar end -->
+<!--clock-->
+<div id="time">
+<div class="row"></div>
+<div class="col-md-9"></div>
+<div class="col-md-1"><iframe src="http://free.timeanddate.com/clock/i4qz1sfl/n176" frameborder="0" width="82" height="18"></iframe>
+</iframe>
+</div>
+<div class="col-md-2"><iframe src="http://free.timeanddate.com/clock/i4qz1uoc/n176/tt1/tw0" frameborder="0" width="129" height="18"></iframe>
+</div></div>
+<br><br>
+<div id="welcome box">
+<div class="alert alert-info fade in" style="text-align:centre">
+<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><strong><p id="well">Welcome!</p></strong></div>
+
+<div class="row"></div>
+<div class="col-md-2">
+	 <div class="sidebar">
+    <div class="mini-submenu">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+    </div>
+    <div class="list-group">
+        <span href="#" class="list-group-item active">
+            <strong>Submenu</strong>
+            <span class="pull-right" id="slide-submenu">
+                <i class="fa fa-times"></i>
+            </span>
+        </span>
+        <a href="#" class="list-group-item">
+            <i class="fa fa-comment-o"></i> View all
+        </a>
+        <a href="#" class="list-group-item">
+            <i class="fa fa-search"></i> History
+        </a>
+        <a href="#" class="list-group-item">
+            <i class="fa fa-folder-open-o"></i> Upcoming <span class="badge">4</span>
+        </a>
+        <a href="#" class="list-group-item">
+            <i class="fa fa-bar-chart-o"></i> Total <span class="badge">14</span>
+        </a>
+        <a href="#" class="list-group-item">
+            <i class="fa fa-envelope"></i> Trash
+        </a>
+    </div>        
+</div>
+</div>
+<div class="col-md-10">
+	<div id="alltask">
+	<h3><legend>All Task</legend></h3>
+  <nav>
+  <ul class="pagination">
+    <li>
+      <a href="#" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+    <li><a href="#">1</a></li>
+    <li><a href="#">2</a></li>
+    <li><a href="#">3</a></li>
+    <li><a href="#">4</a></li>
+    <li><a href="#">5</a></li>
+    <li>
+      <a href="#" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+<div class="panel panel-primary">
+<div class="panel-heading">Tasks</div>
+  <H2>My Tasks</H2>
 {% for each in tasks %}
 <li> {{ each.text }} </li>
 {% endfor %}
+
+<div class="row"></div></div>
+    <legend>Add Task</legend>
+    
+    <form action="/" method="post" >{% csrf_token %}
+<input name="task" type="text">
+<button type="submit"> Add Task</button>
+</form>
+
+<div class="col-md-4"></div>
+<!--form ends-->
+
+</div>
+</div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+<script src="../../dist/js/bootstrap.min.js"></script>
+
+<!--
+
+ Just to make our placeholder images work. Don't a…
+
+-->
+
+<script src="../../assets/js/vendor/holder.min.js"></script>
+
+<!--
+
+ IE10 viewport hack for Surface/desktop Windows 8 …
+
+-->
+
+<script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+<script>
+function auth() {
+    var x,txt;
+
+    // Get the value of the input field with id="numb"
+    x = document.getElementById("pass").text;
+
+    // If x is Not a Number or less than one or greater than 10
+    if (x="12345") {
+        txt = "Access Granted!";
+    } 
+    else {
+        txt = "Invalid!";
+    }
+    document.getElementById("well").innerHTML = txt;
+}
+</script>
+<script>
+window.alert("Bonjour!");
+</script>
 
 </body>
 </html>
